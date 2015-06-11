@@ -15,7 +15,7 @@ var height_functional = screen_height * run_factor;
 // Initialization
 var golden_ratio         = 1.61803398875;
 var arc_start            = width_functional / golden_ratio;
-var arc_initial_diameter = height_functional; //2 * (width_functional - arc_start);
+var arc_initial_diameter = height_functional * 1.5; //2 * (width_functional - arc_start);
 
 // Appearance
 var total_arcs   = 150;                        // How to change this?
@@ -26,6 +26,9 @@ var stroke_decay_oscillator;
 
 var arc_diameter_decay      = 0.85;
 var arc_angle_of_attachment = -45.0;
+var decrement_arc_angle_of_attachment = true;
+var arc_angle_min = -65.0;
+var arc_angle_max = -45.0;
 
 var arc_diameter_decay_oscillator;
 var arc_angle_of_attachment_oscillator;
@@ -111,22 +114,23 @@ function setup() {
 
   spiral_center = createVector(0,0);
 
-  arc_diameter_decay_oscillator      = new Oscillator(0.75,0.95,0.05);
-  arc_angle_of_attachment_oscillator = new Oscillator(1,360, 0.0003);
+  arc_diameter_decay_oscillator      = new Oscillator(0.6,0.85,0.05);
+  arc_angle_of_attachment_oscillator = new Oscillator(0,360, 3);
 
-  arc_degree_start_oscillator        = new Oscillator(90,0,0.06);
-  arc_degree_stop_oscillator         = new Oscillator(-45,-120,0.04);
+  arc_degree_start_oscillator        = new Oscillator(0,360,0.1);
+  arc_degree_stop_oscillator         = new Oscillator(0,-360,0.06);
 
-  rotation_delta_oscillator          = new Oscillator(0.5,-0.5,0.05);
+  rotation_delta_oscillator          = new Oscillator(-0.1,0.5,0.1);
 
-  stroke_decay_oscillator            = new Oscillator(0.8,0.9,0.05);
+  stroke_decay_oscillator            = new Oscillator(0.6,0.80,0.1);
 
   root_arc_center = createVector(width_functional/2.0,height_functional/2.0); // createVector(arc_start,height_functional);
-  root_arc = new Arc(root_arc_center, arc_initial_diameter, arc_degree_start, arc_degree_stop, stroke_width, total_arcs - 1, true, 0, null, 0);
+  root_arc = new Arc(root_arc_center, arc_initial_diameter, arc_degree_start, arc_degree_stop, stroke_width, total_arcs - 1, true, arc_angle_of_attachment, null, 0);
 
 }
 
 function draw() {
+
   if(black_bg_mode){
     background(0);
   } else {
@@ -134,11 +138,11 @@ function draw() {
   }
 
   var rot_delta = rotation_delta_oscillator.oscillate();
-  // rotate_angle -= rot_delta;  //rotate_angle_delta;
+  rotate_angle -= rot_delta;  //rotate_angle_delta;
 
   push();
-  translate(spiral_center.x,spiral_center.y);
-  //rotate(rotate_angle);
+  translate(width_functional/2,height_functional/2);
+  rotate(rotate_angle);
 
   // Update the arc start and stop degrees...
   var new_start = arc_degree_start_oscillator.oscillate();
@@ -150,8 +154,10 @@ function draw() {
   root_arc.update_diameter_decay(new_diameter_decay);
 
   // Update the arc angle of attachment
-  var new_arc_angle_of_attachment = arc_angle_of_attachment_oscillator.oscillate();
-  root_arc.update_arc_angle_of_attachment(new_arc_angle_of_attachment);
+  //var new_arc_angle_of_attachment = arc_angle_of_attachment_oscillator.oscillate();
+  //root_arc.update_arc_angle_of_attachment(new_arc_angle_of_attachment);
+
+  //arc_angle_of_attachment_updater_hack();
 
   var new_stroke_decay = stroke_decay_oscillator.oscillate();
   root_arc.update_stroke_decay(new_stroke_decay);
@@ -159,6 +165,25 @@ function draw() {
   root_arc.draw();
   pop();
 
+}
+
+function arc_angle_of_attachment_updater_hack(){
+  if(frameCount % 100 == 0){
+    // Adjust the angle
+    if (arc_angle_of_attachment <= arc_angle_min) {
+      decrement_arc_angle_of_attachment = false;
+    } else if (arc_angle_of_attachment >= arc_angle_max) {
+      decrement_arc_angle_of_attachment = true;
+    }
+
+    if (decrement_arc_angle_of_attachment) {
+      arc_angle_of_attachment -= 0.1;
+    } else {
+      arc_angle_of_attachment += 0.1;
+    }
+
+    root_arc.update_arc_angle_of_attachment(-arc_angle_of_attachment);
+  }
 }
 
 
@@ -280,7 +305,7 @@ Arc.prototype.draw = function(){
   // We rotate around the spiral center, so this has to offset by the outer transformation matrix
   // and also by the position of the arc itself.
   translate(-spiral_center.x, -spiral_center.y);
-  arc(this.center.x,this.center.y,this.diameter*2.5,this.diameter,this.degree_start,this.degree_stop);
+  arc(this.center.x,this.center.y,this.diameter,this.diameter,this.degree_start,this.degree_stop);
   pop();
 
 
@@ -303,7 +328,7 @@ function Oscillator(_min,_max,_rate){
 
 Oscillator.prototype.oscillate = function(){
   this.theta += this.rate;
-  var delta = sin(this.theta) * this.diff;
+  var delta = abs(sin(this.theta) * this.diff);
   this.current_value = this.min + delta;
   return this.current_value;
 }
