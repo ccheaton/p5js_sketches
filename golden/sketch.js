@@ -6,6 +6,8 @@ var screen_height = 2304;
 var black_bg_mode = false;
 
 // Adjust for different screen sizes;
+// Set this to 1.0 for full resolution of the hunt screen.
+// 0.2 is good for development.
 var run_factor    = 0.2;
 
 // Values for working
@@ -13,41 +15,33 @@ var width_functional  = screen_width * run_factor;
 var height_functional = screen_height * run_factor;
 
 // Initialization
-var golden_ratio         = 1.61803398875;
-var arc_start            = width_functional / golden_ratio;
-var arc_initial_diameter = height_functional * 1.5; //2 * (width_functional - arc_start);
+var arc_initial_diameter = height_functional * 1.5;
 
 // Appearance
-var total_arcs   = 150;                        // How to change this?
-var stroke_width = 320 * run_factor;          // oscillate
-var stroke_decay = 0.80;                      // oscillate
+var total_arcs   = 150;
+var stroke_width = 320 * run_factor;
+var stroke_decay = 0.80;
 
 var stroke_decay_oscillator;
 
 var arc_diameter_decay      = 0.85;
-var arc_angle_of_attachment = -45.0;
-var decrement_arc_angle_of_attachment = true;
-var arc_angle_min = -65.0;
-var arc_angle_max = -45.0;
-
 var arc_diameter_decay_oscillator;
-var arc_angle_of_attachment_oscillator;
 
-/* When creating child arcs, the center of the child arc is equivalent
-to a point on a circle that is equal to the point on the arc of the
-parent arc to which we're attaching. The new_center_angle_offset is
-in place to allow for rotating around the attachment point. */
+var arc_angle_of_attachment = -45.0;
 
-var new_center_angle        = 180.0 + arc_angle_of_attachment;
-var new_center_angle_offset = 0;              // oscillate
-
-var arc_degree_start        = 90.0;           // oscillate
-var arc_degree_stop         = -120.0;         // oscillate
+var arc_degree_start = 90.0;
+var arc_degree_stop  = -120.0;
 
 var arc_degree_start_oscillator;
 var arc_degree_stop_oscillator;
 
-var colors   = [];                            // Change based on time of day?
+var colors;
+var blue_colors   = [];
+var orange_colors = [];
+var green_colors  = [];
+var maroon_colors = [];
+
+
 var root_arc = null;
 var root_arc_center;
 
@@ -61,70 +55,78 @@ var spiral_center;
 var wandering_x = 0.0;
 var wandering_y = 0.0;
 
+// For color shifting
+var hour_of_day = 1;
 
 function setup() {
   createCanvas(width_functional, height_functional);
-  //frameRate(4);
-  // Use degrees instead of radians
+
+  // Use degrees instead of radians because radians are confusing as shit
   angleMode(DEGREES);
 
-  var d = new Date();
-  var h = d.getHours();
+  // Establish colors. I tried doing this in a function but it was 
+  // executed asynchronously and did not complete before the colors
+  // were needed below. The color() object does not exist until we are
+  // in setup().
+  blue_colors.push(color('#0E4E7F'));
+  blue_colors.push(color('#51B3FF'));
+  blue_colors.push(color('#1D9DFF'));
+  blue_colors.push(color('#649EDB'));
+  blue_colors.push(color('#176FCC'));
+  blue_colors.push(color('#768EBD'));
+  blue_colors.push(color('#58CFFF'));
 
-  var c = h % 4;
+  orange_colors.push(color('#D40000'));
+  orange_colors.push(color('#FF3800'));
+  orange_colors.push(color('#B31B1B'));
+  orange_colors.push(color('#F94D00'));
+  orange_colors.push(color('#FF7E00'));
+  orange_colors.push(color('#FF2400'));
+  orange_colors.push(color('#E48400'));
+
+  green_colors.push(color('#00CC31'));
+  green_colors.push(color('#3A7047'));
+  green_colors.push(color('#00B22B'));
+  green_colors.push(color('#2ABF4E'));
+  green_colors.push(color('#007F1F'));
+  green_colors.push(color('#5FBF64'));
+  green_colors.push(color('#357048'));
+
+  maroon_colors.push(color('#75111B'));
+  maroon_colors.push(color('#96434C'));
+  maroon_colors.push(color('#C91D2F'));
+  maroon_colors.push(color('#D25E6A'));
+  maroon_colors.push(color('#961623'));
+  maroon_colors.push(color('#C9261E'));
+  maroon_colors.push(color('#962A48'));
+
+  var d = new Date();
+  hour_of_day = d.getHours();
+  var c = hour_of_day % 4;
 
   if (c == 0) {
     // Blue
-    colors.push(color('#0E4E7F'));
-    colors.push(color('#51B3FF'));
-    colors.push(color('#1D9DFF'));
-    colors.push(color('#649EDB'));
-    colors.push(color('#176FCC'));
-    colors.push(color('#768EBD'));
-    colors.push(color('#58CFFF'));
+    colors = blue_colors;
   } else if (c == 1) {
     // Red and Orange
-    colors.push(color('#D40000'));
-    colors.push(color('#FF3800'));
-    colors.push(color('#B31B1B'));
-    colors.push(color('#F94D00'));
-    colors.push(color('#FF7E00'));
-    colors.push(color('#FF2400'));
-    colors.push(color('#E48400'));
+    colors = orange_colors;
   } else if (c == 2) {
     // Green
-    colors.push(color('#00CC31'));
-    colors.push(color('#3A7047')); //3A7047
-    colors.push(color('#00B22B'));
-    colors.push(color('#2ABF4E'));
-    colors.push(color('#007F1F'));
-    colors.push(color('#5FBF64'));
-    colors.push(color('#357048'));
+    colors = green_colors;
   } else if (c == 3) {
     // Maroon
-    colors.push(color('#75111B'));
-    colors.push(color('#96434C')); // 96434C
-    colors.push(color('#C91D2F'));
-    colors.push(color('#D25E6A'));
-    colors.push(color('#961623'));
-    colors.push(color('#C9261E'));
-    colors.push(color('#962A48'));
+    colors = maroon_colors;
   }
-
 
   spiral_center = createVector(0,0);
 
-  arc_diameter_decay_oscillator      = new Oscillator(0.6,0.85,0.05);
-  arc_angle_of_attachment_oscillator = new Oscillator(0,360, 3);
+  arc_diameter_decay_oscillator = new Oscillator(0.6,0.85,0.05);
+  arc_degree_start_oscillator   = new Oscillator(1,360,0.09);
+  arc_degree_stop_oscillator    = new Oscillator(-1,-360,0.06);
+  rotation_delta_oscillator     = new Oscillator(-0.1,0.5,0.1);
+  stroke_decay_oscillator       = new Oscillator(0.55,0.90,0.07);
 
-  arc_degree_start_oscillator        = new Oscillator(0,360,0.1);
-  arc_degree_stop_oscillator         = new Oscillator(0,-360,0.06);
-
-  rotation_delta_oscillator          = new Oscillator(-0.1,0.5,0.1);
-
-  stroke_decay_oscillator            = new Oscillator(0.6,0.80,0.1);
-
-  root_arc_center = createVector(width_functional/2.0,height_functional/2.0); // createVector(arc_start,height_functional);
+  root_arc_center = createVector(width_functional/2.0,height_functional/2.0);
   root_arc = new Arc(root_arc_center, arc_initial_diameter, arc_degree_start, arc_degree_stop, stroke_width, total_arcs - 1, true, arc_angle_of_attachment, null, 0);
 
 }
@@ -137,6 +139,37 @@ function draw() {
     background(0);
   }
 
+  // Check if we need to change color templates
+  setColors();
+
+  // The remaining draw elements are done in a callback.
+
+}
+
+function setColors(){
+  var d = new Date();
+  var _hour = d.getHours();
+
+  if (_hour != hour_of_day) {
+    hour_of_day = _hour;
+    var c = hour_of_day % 4;
+
+    if (c == 0) {
+      colors = blue_colors;
+    } else if (c == 1) {
+      colors = orange_colors;
+    } else if (c == 2) {
+      colors = green_colors;
+    } else if (c == 3) {
+      colors = maroon_colors;
+    }
+  }
+
+  draw_rest()
+}
+
+// This is a callback just to make sure that the colors are set properly when they change.
+function draw_rest() {
   var rot_delta = rotation_delta_oscillator.oscillate();
   rotate_angle -= rot_delta;  //rotate_angle_delta;
 
@@ -153,38 +186,15 @@ function draw() {
   var new_diameter_decay = arc_diameter_decay_oscillator.oscillate();
   root_arc.update_diameter_decay(new_diameter_decay);
 
-  // Update the arc angle of attachment
-  //var new_arc_angle_of_attachment = arc_angle_of_attachment_oscillator.oscillate();
-  //root_arc.update_arc_angle_of_attachment(new_arc_angle_of_attachment);
-
-  //arc_angle_of_attachment_updater_hack();
-
   var new_stroke_decay = stroke_decay_oscillator.oscillate();
   root_arc.update_stroke_decay(new_stroke_decay);
 
   root_arc.draw();
   pop();
-
 }
 
-function arc_angle_of_attachment_updater_hack(){
-  if(frameCount % 100 == 0){
-    // Adjust the angle
-    if (arc_angle_of_attachment <= arc_angle_min) {
-      decrement_arc_angle_of_attachment = false;
-    } else if (arc_angle_of_attachment >= arc_angle_max) {
-      decrement_arc_angle_of_attachment = true;
-    }
 
-    if (decrement_arc_angle_of_attachment) {
-      arc_angle_of_attachment -= 0.1;
-    } else {
-      arc_angle_of_attachment += 0.1;
-    }
 
-    root_arc.update_arc_angle_of_attachment(-arc_angle_of_attachment);
-  }
-}
 
 
 
@@ -296,7 +306,7 @@ Arc.prototype.draw = function(){
   noFill();
 
   if(black_bg_mode){
-    stroke(255);
+    stroke(255,255,255,200);
   } else {
     stroke(colors[this.color_index]);
   }
