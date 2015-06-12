@@ -15,7 +15,7 @@ var width_functional  = screen_width * run_factor;
 var height_functional = screen_height * run_factor;
 
 // Initialization
-var arc_initial_diameter = height_functional * 1.5;
+var arc_initial_diameter = height_functional;
 
 // Appearance
 var total_arcs   = 150;
@@ -120,11 +120,11 @@ function setup() {
 
   spiral_center = createVector(0,0);
 
-  arc_diameter_decay_oscillator = new Oscillator(0.6,0.85,0.05);
-  arc_degree_start_oscillator   = new Oscillator(1,360,0.09);
-  arc_degree_stop_oscillator    = new Oscillator(-1,-360,0.06);
+  arc_diameter_decay_oscillator = new Oscillator(0.6,0.85,0.1);
+  arc_degree_start_oscillator   = new Oscillator(200,0,0.04);
+  arc_degree_stop_oscillator    = new Oscillator(0,-190,0.09);
   rotation_delta_oscillator     = new Oscillator(-0.1,0.5,0.1);
-  stroke_decay_oscillator       = new Oscillator(0.55,0.90,0.07);
+  stroke_decay_oscillator       = new Oscillator(0.55,0.78,0.08);
 
   root_arc_center = createVector(width_functional/2.0,height_functional/2.0);
   root_arc = new Arc(root_arc_center, arc_initial_diameter, arc_degree_start, arc_degree_stop, stroke_width, total_arcs - 1, true, arc_angle_of_attachment, null, 0);
@@ -175,7 +175,7 @@ function draw_rest() {
 
   push();
   translate(width_functional/2,height_functional/2);
-  rotate(rotate_angle);
+  // rotate(rotate_angle);
 
   // Update the arc start and stop degrees...
   var new_start = arc_degree_start_oscillator.oscillate();
@@ -315,7 +315,7 @@ Arc.prototype.draw = function(){
   // We rotate around the spiral center, so this has to offset by the outer transformation matrix
   // and also by the position of the arc itself.
   translate(-spiral_center.x, -spiral_center.y);
-  arc(this.center.x,this.center.y,this.diameter,this.diameter,this.degree_start,this.degree_stop);
+  arc(this.center.x,this.center.y,this.diameter*2.5,this.diameter,this.degree_start,this.degree_stop);
   pop();
 
 
