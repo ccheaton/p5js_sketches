@@ -8,7 +8,7 @@ var black_bg_mode = false;
 // Adjust for different screen sizes;
 // Set this to 1.0 for full resolution of the hunt screen.
 // 0.2 is good for development.
-var run_factor    = 0.2;
+var run_factor    = 1.0;
 
 // Values for working
 var width_functional  = screen_width * run_factor;
@@ -341,27 +341,6 @@ Oscillator.prototype.oscillate = function(){
   var delta = abs(sin(this.theta) * this.diff);
   this.current_value = this.min + delta;
   return this.current_value;
-}
-
-// A class to show credits for the piece
-function Credits(_piece_title, _byline, _duration, _freq_in_mins){
-  // _title is the title of the piece
-  // _byline shoudl be the name of the author, and year, perhaps
-  // _duration is how long the credits should appear on the screen
-  // _freq_in_mins is how often the credits should reappear on the screen
-
-  // On the Hunt Library Art wall, Heading 1 font size should be 150 - 275
-  // and heading 2 should be 90 - 150 points
-
-  this.piece_title  = _title;
-  this.byline       = _byline;
-  this.duration     = _duration;
-  this.freq_in_mins = _freq_in_mins;
-
-  this.display_stop_time = 0;
-  this.next_display_time = 0;
-
-  this.should_display = true;
 }
 
 
